@@ -45,18 +45,23 @@ def parse_action_from_step(step: GitHubWorkflowStep) -> GitHubAction | None:
     Returns:
         GitHubAction | None: GitHub action reference if it exists, None otherwise
     """
-    if "uses" not in step:
+    uses_value = step.get("uses")
+    if not uses_value:
         return None
 
-    if step["uses"].startswith("/") or step["uses"].startswith("./"):
-        return None
-    parts = step["uses"].split("@", 1)
-    if len(parts) != 2:
-        log.debug(f"Invalid action reference: {step['uses']}")
+    # This checks both "/" and "./" efficiently
+    if uses_value.startswith(("/", "./")):
         return None
 
-    if re.search(r"^([\w-])+/([\w./-])+$", parts[0]):
-        return GitHubAction(name=parts[0], ref=parts[1])
+    left, sep, right = uses_value.partition("@")
+    if sep != "@":
+        # Only log if debug is enabled, to avoid f-string formatting cost unless needed
+        if log.isEnabledFor(10):  # logging.DEBUG == 10
+            log.debug(f"Invalid action reference: {uses_value}")
+        return None
+
+    if _ACTION_REF_REGEX.fullmatch(left):
+        return GitHubAction(name=left, ref=right)
     return None
 
 
@@ -138,3 +143,5 @@ class GitHubActionDependencyScanner(ProjectScanner):
                 if re.match(r"^(.+)\.y(a)?ml$", name, flags=re.IGNORECASE):
                     requirement_files.append(os.path.join(workflow_folder, name))
         return requirement_files
+
+_ACTION_REF_REGEX = re.compile(r"^[\w-]+/[\w./-]+$")
