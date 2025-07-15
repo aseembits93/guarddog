@@ -8,4 +8,11 @@ class PypiUnclaimedMaintainerEmailDomainDetector(UnclaimedMaintainerEmailDomainD
         super().__init__("pypi")
 
     def get_email_addresses(self, package_info: dict):
-        return get_email_addresses(package_info)
+        info = package_info.get("info", {})
+        author_email = info.get("author_email")
+        if author_email:
+            return {author_email}
+        maintainer_email = info.get("maintainer_email")
+        if maintainer_email:
+            return {maintainer_email}
+        return set()
