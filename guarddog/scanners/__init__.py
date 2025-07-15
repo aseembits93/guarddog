@@ -48,13 +48,15 @@ def get_project_scanner(ecosystem: ECOSYSTEM) -> Optional[ProjectScanner]:
         Optional[ProjectScanner]: The result of the scanner request
 
     """
-    match ecosystem:
-        case ECOSYSTEM.PYPI:
-            return PypiRequirementsScanner()
-        case ECOSYSTEM.NPM:
-            return NPMRequirementsScanner()
-        case ECOSYSTEM.GO:
-            return GoDependenciesScanner()
-        case ECOSYSTEM.GITHUB_ACTION:
-            return GitHubActionDependencyScanner()
+    # Use dict lookup for fast class selection (optimized for repeated calls)
+    scanner_cls = _ecosystem_to_scanner_cls.get(ecosystem)
+    if scanner_cls is not None:
+        return scanner_cls()
     return None
+
+_ecosystem_to_scanner_cls = {
+    ECOSYSTEM.PYPI: PypiRequirementsScanner,
+    ECOSYSTEM.NPM: NPMRequirementsScanner,
+    ECOSYSTEM.GO: GoDependenciesScanner,
+    ECOSYSTEM.GITHUB_ACTION: GitHubActionDependencyScanner,
+}
