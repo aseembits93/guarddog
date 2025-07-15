@@ -31,28 +31,41 @@ class TyposquatDetector(Detector):
             bool: True if within distance one
         """
 
-        if abs(len(name1) - len(name2)) > 1:
+        len1, len2 = len(name1), len(name2)
+        if abs(len1 - len2) > 1:
             return False
 
         # Addition to name2
-        if len(name1) > len(name2):
-            for i in range(len(name1)):
-                if name1[:i] + name1[i + 1:] == name2:
+        if len1 > len2:
+            # Can we make name1==name2 by deleting one char from name1?
+            for i in range(len1):
+                # Compare parts before and after the skipped char
+                if name1[:i] == name2[:i] and name1[i+1:] == name2[i:]:
                     return True
+            return False
 
         # Addition to name1
-        elif len(name2) > len(name1):
-            for i in range(len(name2)):
-                if name2[:i] + name2[i + 1:] == name1:
+        elif len2 > len1:
+            for i in range(len2):
+                if name2[:i] == name1[:i] and name2[i+1:] == name1[i:]:
                     return True
+            return False
 
-        # Edit character
+        # Same length: check for one substitution or one deletion+insertion at the same spot
         else:
-            for i in range(len(name1)):
-                if name1[:i] + name1[i + 1:] == name2[:i] + name2[i + 1:]:
+            mismatch = 0
+            for i in range(len1):
+                if name1[i] != name2[i]:
+                    mismatch += 1
+                    if mismatch > 1:
+                        return False
+            if mismatch == 1:
+                return True
+            # Now check if exactly one deletion + one insertion at same spot (i.e. one transposition)
+            for i in range(len1):
+                if name1[:i] == name2[:i] and name1[i+1:] == name2[i+1:]:
                     return True
-
-        return False
+            return False
 
     def _is_swapped_typo(self, name1, name2) -> bool:
         """
@@ -65,13 +78,23 @@ class TyposquatDetector(Detector):
         Returns:
             bool: True if adjacent swaps
         """
-
-        if len(name1) == len(name2):
-            for i in range(len(name1) - 1):
-                swapped_name1 = name1[:i] + name1[i + 1] + name1[i] + name1[i + 2:]
-                if swapped_name1 == name2:
+        len1 = len(name1)
+        if len1 != len(name2):
+            return False
+        for i in range(len1-1):
+            if (name1[i] != name2[i] or name1[i+1] != name2[i+1]) and \
+               (name1[i+1] == name2[i] and name1[i] == name2[i+1]):
+                # Only allow exactly this adjacent swap, and the rest must match
+                if i == 0:
+                    tail_equal = name1[2:] == name2[2:]
+                elif i == len1-2:
+                    head_equal = name1[:i] == name2[:i]
+                    tail_equal = True
+                else:
+                    head_equal = name1[:i] == name2[:i]
+                    tail_equal = name1[i+2:] == name2[i+2:]
+                if (i == 0 or head_equal) and tail_equal:
                     return True
-
         return False
 
     def _generate_permutations(self, package_name) -> list[str]:
