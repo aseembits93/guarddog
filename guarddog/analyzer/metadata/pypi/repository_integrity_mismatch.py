@@ -89,14 +89,8 @@ def dict_generator(indict, pre=None):
 
 def get_file_hash(path):
     with open(path, 'rb') as f:
-        # Read the contents of the file
         file_contents = f.read()
-        # Create a hash object
-        hash_object = hashlib.sha256()
-        # Feed the file contents to the hash object
-        hash_object.update(file_contents)
-        # Get the hexadecimal hash value
-        return hash_object.hexdigest(), str(file_contents).strip().splitlines()
+        return hashlib.sha256(file_contents).hexdigest()
 
 
 def _ensure_proper_url(url):
@@ -146,9 +140,8 @@ def exclude_result(file_name, repo_root, pkg_root):
     * if the file is a documentation file (based on its extension)
     * if the file is a setup.cfg file with the egg_info claim present on Pypi and not on GitHub
     """
-    for extension in EXCLUDED_EXTENSIONS:
-        if file_name.endswith(extension):
-            return True
+    if file_name.endswith(tuple(EXCLUDED_EXTENSIONS)):
+        return True
     if file_name.endswith("setup.cfg"):
         repo_cfg = configparser.ConfigParser()
         repo_cfg.read(os.path.join(repo_root, file_name))
@@ -164,20 +157,27 @@ def exclude_result(file_name, repo_root, pkg_root):
 def find_mismatch_for_tag(repo, tag, base_path, repo_path):
     repo.checkout(tag)
     mismatch = []
+
     for root, dirs, files in os.walk(base_path):
         relative_path = os.path.relpath(root, base_path)
         repo_root = os.path.join(repo_path, relative_path)
         if not os.path.exists(repo_root):
             continue
-        repo_files = list(filter(
-            lambda x: os.path.isfile(os.path.join(repo_root, x)),
-            os.listdir(repo_root)
-        ))
-        for file_name in repo_files:
-            if file_name not in files:  # ignore files we don't have in the distribution
-                continue
-            repo_hash, repo_content = get_file_hash(os.path.join(repo_root, file_name))
-            pkg_hash, pkg_content = get_file_hash(os.path.join(root, file_name))
+        try:
+            pkg_files = set(files)
+            # Use os.scandir for faster directory listing and isfile checks
+            with os.scandir(repo_root) as entries:
+                repo_files = {entry.name for entry in entries if entry.is_file()}
+        except Exception:
+            continue
+
+        # Intersection: files present in both pkg and repo directories
+        common_files = pkg_files & repo_files
+        for file_name in common_files:
+            repo_file_path = os.path.join(repo_root, file_name)
+            pkg_file_path = os.path.join(root, file_name)
+            repo_hash = get_file_hash(repo_file_path)
+            pkg_hash = get_file_hash(pkg_file_path)
             if repo_hash != pkg_hash:
                 if exclude_result(file_name, repo_root, root):
                     continue
