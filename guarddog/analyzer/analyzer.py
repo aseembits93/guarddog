@@ -42,30 +42,15 @@ class Analyzer:
 
         # Rules and associated detectors
         self.metadata_detectors = get_metadata_detectors(ecosystem)
+        # metadata_detectors is a dict with rule names as keys
+        self.metadata_ruleset = self.metadata_detectors.keys()  # dict_keys (already set-like, no need to copy)
 
-        self.metadata_ruleset: set[str] = set(self.metadata_detectors.keys())
-        self.semgrep_ruleset: set[str] = set(
-            r.id for r in get_sourcecode_rules(ecosystem, SempgrepRule)
-        )
-        self.yara_ruleset: set[str] = set(
-            r.id for r in get_sourcecode_rules(ecosystem, YaraRule)
-        )
+        # Realize the generator once so we don't traverse it multiple times
+        semgrep_rules = list(get_sourcecode_rules(ecosystem, SempgrepRule))
+        yara_rules = list(get_sourcecode_rules(ecosystem, YaraRule))
 
-        # Define paths to exclude from sourcecode analysis
-        self.exclude = [
-            "helm",
-            ".idea",
-            "venv",
-            "test",
-            "tests",
-            ".env",
-            "dist",
-            "build",
-            "semgrep",
-            "migrations",
-            ".github",
-            ".semgrep_logs",
-        ]
+        self.semgrep_ruleset = {r.id for r in semgrep_rules}
+        self.yara_ruleset = {r.id for r in yara_rules}
 
     def analyze(self, path, info=None, rules=None, name: Optional[str] = None, version: Optional[str] = None) -> dict:
         """
@@ -399,8 +384,9 @@ output: {e.output}
 
     # Makes sure the matching code to be displayed isn't too long
     def trim_code_snippet(self, code):
-        THRESHOLD = 250
-        if len(code) > THRESHOLD:
-            return code[: THRESHOLD - 10] + '...' + code[len(code) - 10:]
+        threshold = 250
+        if len(code) > threshold:
+            # Returns a truncated snippet with start and end preserved
+            return code[:240] + '...' + code[-10:]
         else:
             return code
