@@ -22,11 +22,10 @@ log = logging.getLogger("guarddog")
 
 
 def extract_owner_and_repo(url) -> Tuple[Optional[str], Optional[str]]:
-    match = re.search(GH_REPO_OWNER_REGEX, url)
+    # Use precompiled regex
+    match = _GH_RE_OWNER_REPO.search(url)
     if match:
-        owner = match.group(1)
-        repo = match.group(2)
-        return owner, repo
+        return match.group(1), match.group(2)
     return None, None
 
 
@@ -40,29 +39,46 @@ def find_best_github_candidate(all_candidates_and_highlighted_link, name):
 
     # if the project url is a GitHub repository, we should follow this as an instruction. Users will click on it
     if best_github_candidate is not None:
-        best_github_candidate = best_github_candidate.replace("http://", "https://")
-        url = urllib3.util.parse_url(best_github_candidate)
-        if url.host == "github.com":
+        if best_github_candidate.startswith("http://"):
+            best_github_candidate = "https://" + best_github_candidate[7:]
+        # Extract host without full parse for speed
+        after_proto = best_github_candidate.split("://", 1)[-1]
+        host = after_proto.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0].lower()
+        if host == "github.com":
             return best_github_candidate
+
     clean_candidates = []
     for entry in candidates:
-        # let's do some cleanup
-        url = urllib3.util.parse_url(entry)
-        if url.host != "github.com":
+        # Very fast github.com host detection before full parse
+        entry_l = entry.lstrip()
+        has_http = entry_l[:4].lower() == "http"
+        if not has_http:
             continue
-        if url.scheme == "http":
-            entry = entry.replace("http://", "https://")
+        after_proto = entry_l.split("://", 1)[-1]
+        host = after_proto.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0].lower()
+        if host != "github.com":
+            continue
+        # Avoid unnecessary replaces
+        if entry_l.startswith("http://"):
+            entry = "https://" + entry_l[7:]
         clean_candidates.append(entry)
+
+    name_lower = name.lower()
+    pat = f"/{name_lower}"
+    # Short-circuit if name pattern matches in GitHub URL
     for entry in clean_candidates:
-        if f"/{name.lower()}" in entry.lower():
+        entry_lower = entry.lower()
+        if pat in entry_lower:
             return entry
+
     # solution 1 did not work, let's be a bit more aggressive
     for entry in clean_candidates:
         owner, repo = extract_owner_and_repo(entry)
-        if repo is not None and (
-                # Idea: replace by if two strings have a Levenshtein distance < X% of string length
-                repo.lower() in name.lower() or name.lower() in repo.lower()):
-            return entry
+        if repo is not None:
+            repo_lower = repo.lower()
+            # Avoid recomputing name_lower, and check both directions
+            if repo_lower in name_lower or name_lower in repo_lower:
+                return entry
     return None
 
 
@@ -293,3 +309,8 @@ class PypiIntegrityMismatchDetector(IntegrityMismatch):
         ))
         return len(mismatch) > 0, f"Some files present in the package are different from the ones on GitHub for " \
                                   f"the same version of the package: \n{message}"
+
+_GH_RE_OWNER_REPO = re.compile(
+    r'(?:https?://)?(?:www\.)?github\.com/([\w-]+)/([\w-]+)',
+    re.I,
+)
