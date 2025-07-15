@@ -34,10 +34,15 @@ class GithubActionScanner(PackageScanner):
     def _get_repo(self, url: str) -> str:
         parsed_url = urlparse(url)
 
-        if parsed_url.hostname and parsed_url.hostname != "github.com":
+        # Fast tuple compare for github.com and None (for local paths if required elsewhere)
+        if parsed_url.hostname not in (None, "github.com"):
             raise ValueError("Invalid GitHub repo URL: " + url)
 
-        path = parsed_url.path.removesuffix(".git").strip("/")
+        # Remove ".git" suffix and leading/trailing slashes in one line for efficiency
+        path = parsed_url.path
+        if path.endswith(".git"):
+            path = path[:-4]
+        path = path.strip("/")
 
         if path.count("/") != 1:
             raise ValueError("Invalid GitHub repo name: " + path)
