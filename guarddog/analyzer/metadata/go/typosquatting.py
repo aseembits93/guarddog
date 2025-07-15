@@ -16,8 +16,11 @@ class GoTyposquatDetector(TyposquatDetector):
     """
 
     def _get_top_packages(self) -> set:
-        top_packages_filename = "top_go_packages.json"
+        # Use class-level cache to avoid repeated I/O and parsing if called multiple times
+        if hasattr(self, '_top_packages_cache'):
+            return self._top_packages_cache
 
+        top_packages_filename = "top_go_packages.json"
         resources_dir = TOP_PACKAGES_CACHE_LOCATION
         if resources_dir is None:
             resources_dir = os.path.abspath(
@@ -26,17 +29,16 @@ class GoTyposquatDetector(TyposquatDetector):
 
         top_packages_path = os.path.join(resources_dir, top_packages_filename)
 
-        top_packages_information = None
-
-        if top_packages_filename in os.listdir(resources_dir):
-            with open(top_packages_path, "r") as top_packages_file:
-                top_packages_information = json.load(top_packages_file)
-
-        if top_packages_information is None:
+        if not os.path.isfile(top_packages_path):
             raise Exception(
                 f"Could not retrieve top Go packages from {top_packages_path}")
 
-        return set(top_packages_information)
+        with open(top_packages_path, "r") as top_packages_file:
+            packages = json.load(top_packages_file)
+
+        # Cache and return as set for O(1) lookup
+        self._top_packages_cache = set(packages)
+        return self._top_packages_cache
 
     def detect(
         self,
