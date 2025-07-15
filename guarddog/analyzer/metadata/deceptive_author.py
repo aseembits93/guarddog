@@ -6,6 +6,7 @@ from disposable_email_domains import blocklist
 from guarddog.analyzer.metadata.detector import Detector
 
 from .utils import extract_email_address_domain
+from functools import lru_cache
 
 
 class DeceptiveAuthorDetector(Detector):
@@ -23,27 +24,23 @@ class DeceptiveAuthorDetector(Detector):
         return set()
 
     @staticmethod
+    @lru_cache(maxsize=1)
     def get_suspicious_email_domains() -> set:
         """
         Gets the domains that are known to be used by suspicious authors.
         """
-        # Obtain the path to the file containing knonw placeholder email domains
         placeholder_email_domains_filename = "placeholder_email_domains.txt"
-
         resources_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "resources")
         )
-
         placeholder_email_domains_path = os.path.join(
             resources_dir, placeholder_email_domains_filename
         )
 
-        # read internal maintained list of placeholder email domains
-        # this domains are usually used by authors who want to don't want to reveal their real email
-        placeholder_email_domains_data = None
-        with open(placeholder_email_domains_path, "r") as placeholder_email_domains_file:
+        # Read domains efficiently, one per line, stripping whitespace
+        with open(placeholder_email_domains_path, "r") as f:
             placeholder_email_domains_data = set(
-                placeholder_email_domains_file.read().split("\n")
+                line.strip() for line in f if line.strip()
             )
 
         return blocklist | placeholder_email_domains_data
