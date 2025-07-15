@@ -210,7 +210,7 @@ class PackageScanner:
 
 
 class ProjectScanner:
-    def __init__(self, package_scanner: PackageScanner):
+    def __init__(self, package_scanner: 'PackageScanner'):
         super().__init__()
         self.package_scanner = package_scanner
 
@@ -222,16 +222,19 @@ class ProjectScanner:
             tuple[str, str]: username, personal access token
         """
 
-        user = os.getenv("GIT_USERNAME")
-        personal_access_token = os.getenv("GH_TOKEN")
-        if not user or not personal_access_token:
-            log.error(
-                """WARNING: Please set GIT_USERNAME (Github handle) and GH_TOKEN
-                (generate a personal access token in Github settings > developer)
-                as environment variables before proceeding."""
-            )
-            exit(1)
-        return (user, personal_access_token)
+        # Use os.environ.get, which is marginally faster than os.getenv in tight loops
+        user = os.environ.get("GIT_USERNAME")
+        personal_access_token = os.environ.get("GH_TOKEN")
+        if user and personal_access_token:
+            return (user, personal_access_token)
+        
+        msg = (
+            "WARNING: Please set GIT_USERNAME (Github handle) and GH_TOKEN "
+            "(generate a personal access token in Github settings > developer) "
+            "as environment variables before proceeding."
+        )
+        log.error(msg)
+        exit(1)
 
     def scan_dependencies(
         self,
