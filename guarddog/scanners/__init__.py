@@ -24,16 +24,8 @@ def get_package_scanner(ecosystem: ECOSYSTEM) -> Optional[PackageScanner]:
         Optional[PackageScanner]: The result of the scanner request
 
     """
-    match ecosystem:
-        case ECOSYSTEM.PYPI:
-            return PypiPackageScanner()
-        case ECOSYSTEM.NPM:
-            return NPMPackageScanner()
-        case ECOSYSTEM.GO:
-            return GoModuleScanner()
-        case ECOSYSTEM.GITHUB_ACTION:
-            return GithubActionScanner()
-    return None
+    # Use a dictionary for O(1) lookup, reuse scanner instances
+    return _SCANNER_INSTANCES.get(ecosystem, None)
 
 
 def get_project_scanner(ecosystem: ECOSYSTEM) -> Optional[ProjectScanner]:
@@ -58,3 +50,10 @@ def get_project_scanner(ecosystem: ECOSYSTEM) -> Optional[ProjectScanner]:
         case ECOSYSTEM.GITHUB_ACTION:
             return GitHubActionDependencyScanner()
     return None
+
+_SCANNER_INSTANCES = {
+    ECOSYSTEM.PYPI: PypiPackageScanner(),
+    ECOSYSTEM.NPM: NPMPackageScanner(),
+    ECOSYSTEM.GO: GoModuleScanner(),
+    ECOSYSTEM.GITHUB_ACTION: GithubActionScanner(),
+}
