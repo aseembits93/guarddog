@@ -20,15 +20,8 @@ def is_supported_archive(path: str) -> bool:
         bool: Represents the decision reached for the file
 
     """
-    def is_tar_archive(path: str) -> bool:
-        tar_exts = [".bz2", ".bzip2", ".gz", ".gzip", ".tgz", ".xz"]
-
-        return any(path.endswith(ext) for ext in tar_exts)
-
-    def is_zip_archive(path: str) -> bool:
-        return any(path.endswith(ext) for ext in [".zip", ".whl", ".egg"])
-
-    return is_tar_archive(path) or is_zip_archive(path)
+    # Use a single endswith check for all supported extensions for improved performance
+    return path.endswith(_ALL_EXTS)
 
 
 def safe_extract(source_archive: str, target_directory: str) -> None:
@@ -76,3 +69,9 @@ def safe_extract(source_archive: str, target_directory: str) -> None:
                 zip.extract(file, path=os.path.join(target_directory, file))
     else:
         raise ValueError(f"unsupported archive extension: {source_archive}")
+
+_TAR_EXTS = (".bz2", ".bzip2", ".gz", ".gzip", ".tgz", ".xz")
+
+_ZIP_EXTS = (".zip", ".whl", ".egg")
+
+_ALL_EXTS = _TAR_EXTS + _ZIP_EXTS
