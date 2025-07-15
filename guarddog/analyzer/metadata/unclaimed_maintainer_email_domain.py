@@ -7,7 +7,7 @@ from .utils import extract_email_address_domain, get_domain_creation_date
 
 
 class UnclaimedMaintainerEmailDomainDetector(Detector):
-    # The name of the rule is dependent on the ecosystem and is provided by the implementing subclasses
+
     def __init__(self, ecosystem: str):
         description = (
             "Identify when a package maintainer e-mail domain (and therefore npm account) "
@@ -67,4 +67,6 @@ class UnclaimedMaintainerEmailDomainDetector(Detector):
 
     @abstractmethod
     def get_email_addresses(self, package_info) -> set[str]:
-        return set()
+        return _EMPTY_SET
+
+_EMPTY_SET = set()
