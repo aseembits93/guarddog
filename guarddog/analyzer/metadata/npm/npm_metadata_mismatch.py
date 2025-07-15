@@ -118,21 +118,24 @@ def describe_diff(diff: Dict[str, Diff]) -> str:
             malicious.js
     ...
     """
-    description = "Difference between manifest and package.json found: \n"
+    lines = ["Difference between manifest and package.json found: \n"]
     for k, differences in diff.items():
-        if differences:
-            field_description = f"{k}: \n"
-            if MANIFEST_FIELDS_CHECKLIST[k] == dict:
-                for d in differences:
-                    field_description += (
-                        f'  {d[0]}: Manifest("{d[1]}"), package.json("{d[2]}") \n'
-                    )
-            else:
-                manifest_str = "  Manifest:\n"
-                package_str = "  package.json:\n"
-                for d in differences:
-                    manifest_str += f"    {d[1]}\n"
-                    package_str += f"    {d[2]}\n"
-                field_description = field_description + manifest_str + package_str
-            description += field_description
-    return description
+        if not differences:
+            continue
+        lines.append(f"{k}: \n")
+        if MANIFEST_FIELDS_CHECKLIST[k] == dict:
+            # Accumulate all per-difference lines for dictionary fields
+            field_lines = [
+                f'  {d[0]}: Manifest("{d[1]}"), package.json("{d[2]}") \n'
+                for d in differences
+            ]
+            lines.extend(field_lines)
+        else:
+            # Accumulate manifest and package.json block lines for non-dict fields
+            manifest_lines = [f"    {d[1]}\n" for d in differences]
+            package_lines = [f"    {d[2]}\n" for d in differences]
+            lines.append("  Manifest:\n")
+            lines.extend(manifest_lines)
+            lines.append("  package.json:\n")
+            lines.extend(package_lines)
+    return ''.join(lines)
