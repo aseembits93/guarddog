@@ -7,6 +7,9 @@ from guarddog.analyzer.metadata.detector import Detector
 
 from .utils import extract_email_address_domain
 
+# Use a global constant to avoid recreating empty sets unnecessarily
+_EMPTY_SET: set[str] = set()
+
 
 class DeceptiveAuthorDetector(Detector):
     """This heuristic detects when an author is using a disposable email."""
@@ -20,7 +23,8 @@ class DeceptiveAuthorDetector(Detector):
         )
 
     def get_email_addresses(self, package_info: dict) -> set[str]:
-        return set()
+        # Return a shared immutable empty set instance
+        return _EMPTY_SET
 
     @staticmethod
     def get_suspicious_email_domains() -> set:
