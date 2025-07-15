@@ -64,12 +64,11 @@ class GoModuleScanner(PackageScanner):
 # > This allows modules example.com/M and example.com/m to both be stored on disk,
 # > since the former is encoded as example.com/!m.
 def escape_module_name(package_name: str) -> str:
-    escaped_package_name = ""
-
+    parts = []
     for c in package_name:
         if c.isupper():
-            escaped_package_name += f"!{c.lower()}"
+            parts.append('!')
+            parts.append(c.lower())
         else:
-            escaped_package_name += c
-
-    return escaped_package_name
+            parts.append(c)
+    return ''.join(parts)
