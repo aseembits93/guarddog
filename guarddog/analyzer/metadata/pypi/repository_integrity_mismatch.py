@@ -22,11 +22,9 @@ log = logging.getLogger("guarddog")
 
 
 def extract_owner_and_repo(url) -> Tuple[Optional[str], Optional[str]]:
-    match = re.search(GH_REPO_OWNER_REGEX, url)
+    match = _GH_REPO_OWNER_PATTERN.search(url)
     if match:
-        owner = match.group(1)
-        repo = match.group(2)
-        return owner, repo
+        return match.group(1), match.group(2)
     return None, None
 
 
@@ -293,3 +291,5 @@ class PypiIntegrityMismatchDetector(IntegrityMismatch):
         ))
         return len(mismatch) > 0, f"Some files present in the package are different from the ones on GitHub for " \
                                   f"the same version of the package: \n{message}"
+
+_GH_REPO_OWNER_PATTERN = re.compile(GH_REPO_OWNER_REGEX)
