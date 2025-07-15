@@ -105,28 +105,31 @@ class PypiTyposquatDetector(TyposquatDetector):
             list: list of confused terms
         """
 
+        terms = package_name.split("-")
         confused_forms = []
 
-        terms = package_name.split("-")
-
-        # Detect swaps like python-package -> py-package
-        for i in range(len(terms)):
-            confused_term = None
-
-            if "python" in terms[i]:
-                confused_term = terms[i].replace("python", "py")
-            elif "py" in terms[i]:
-                confused_term = terms[i].replace("py", "python")
+        n = len(terms)
+        # Pre-allocate join components and reuse them for efficiency
+        # This avoids many list slices/copies
+        for i, term in enumerate(terms):
+            orig_term = term
+            # Only build confused forms if substitution applies
+            if "python" in term:
+                confused_term = term.replace("python", "py")
+            elif "py" in term:
+                confused_term = term.replace("py", "python")
             else:
                 continue
 
-            # Get form when replacing or removing py/python term
-            replaced_form = terms[:i] + [confused_term] + terms[i + 1:]
-            removed_form = terms[:i] + terms[i + 1:]
-
-            for form in (replaced_form, removed_form):
-                confused_forms.append("-".join(form))
-
+            # Mutate the terms array in-place, join, and restore
+            # Replaced form
+            terms[i] = confused_term
+            confused_forms.append("-".join(terms))
+            # Removed form
+            del terms[i]
+            confused_forms.append("-".join(terms))
+            # Restore for next iteration
+            terms.insert(i, orig_term)
         return confused_forms
 
 
