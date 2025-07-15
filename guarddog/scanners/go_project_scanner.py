@@ -32,33 +32,39 @@ class GoDependenciesScanner(ProjectScanner):
     def parse_requirements(self, raw_requirements: str) -> List[Dependency]:
         main_mod = self.parse_go_mod_file(raw_requirements)
 
+        # Preprocess: Map from dependency name to the first (line) index (0-based)
+        first_line_for_module = {}
+        for ix, line in enumerate(raw_requirements.splitlines()):
+            # Optimize: only care about lines that look like an import
+            # "require github.com/foo/bar v1.2.3", "github.com/foo/bar v1.2.3" inside require block, etc.
+            # This is conservative: we just record every module occurrence & first line
+            parts = line.strip().split()
+            # The name of module will be 1 in "require X Y", or 0 in "X Y" inside require ( ... )
+            if len(parts) >= 2:
+                # check for "require mod version" (outside block)
+                if parts[0] == "require":
+                    name = parts[1]
+                else:
+                    name = parts[0]
+                if name not in first_line_for_module:
+                    first_line_for_module[name] = ix
+
+        # Optimize: maintain dependencies by name for O(1) update/lookup
+        dependencies_map = {}
         dependencies: List[Dependency] = []
         for dependency in main_mod.requirements:
             version = dependency.version
             name = dependency.module
-            idx = next(
-                iter(
-                    [
-                        ix
-                        for ix, line in enumerate(raw_requirements.splitlines())
-                        if name in line
-                    ]
-                ),
-                0,
-            )
+            idx = first_line_for_module.get(name, 0)
 
             dep_versions = [DependencyVersion(version=version, location=idx + 1)]
 
-            dep = next(
-                filter(
-                    lambda d: d.name == name,
-                    dependencies,
-                ),
-                None
-            )
-            if not dep:
+            if name not in dependencies_map:
                 dep = Dependency(name=name, versions=set())
+                dependencies_map[name] = dep
                 dependencies.append(dep)
+            else:
+                dep = dependencies_map[name]
 
             dep.versions.update(dep_versions)
         return dependencies
