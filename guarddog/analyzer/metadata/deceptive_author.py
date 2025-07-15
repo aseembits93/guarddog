@@ -53,8 +53,12 @@ class DeceptiveAuthorDetector(Detector):
         Returns a normalized version of the domain address.
         The format should be ready to compare against the list of known disposable domains.
         """
+        # Optimization: Use str.rsplit to avoid building full split list
         domain = domain.lower().strip()
-        return ".".join(domain.split(".")[-2:])
+        parts = domain.rsplit('.', 2)
+        if len(parts) >= 2:
+            return f"{parts[-2]}.{parts[-1]}"
+        return domain
 
     @abstractmethod
     def detect(
