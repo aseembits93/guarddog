@@ -65,12 +65,23 @@ class TyposquatDetector(Detector):
         Returns:
             bool: True if adjacent swaps
         """
+        len1 = len(name1)
+        # Fast fail if not same length
+        if len1 != len(name2):
+            return False
 
-        if len(name1) == len(name2):
-            for i in range(len(name1) - 1):
-                swapped_name1 = name1[:i] + name1[i + 1] + name1[i] + name1[i + 2:]
-                if swapped_name1 == name2:
-                    return True
+        # Use local variables and store for performance
+        s1, s2 = name1, name2
+
+        for i in range(len1 - 1):
+            # Rather than repeat calculations, expand here for speed
+            if (
+                s1[:i] == s2[:i] and
+                s1[i] == s2[i+1] and
+                s1[i+1] == s2[i] and
+                s1[i+2:] == s2[i+2:]
+            ):
+                return True
 
         return False
 
