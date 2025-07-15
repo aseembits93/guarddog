@@ -119,9 +119,17 @@ def cli(log_level):
 
 
 def _get_all_rules(ecosystem: ECOSYSTEM) -> set[str]:
-    return set(r.id for r in get_sourcecode_rules(ecosystem)) | set(
-        get_metadata_detectors(ecosystem).keys()
-    )
+    """
+    Returns all rule ids (from sourcecode and metadata) for a given ecosystem.
+    """
+    result = set()
+    # Use local var for fast lookup
+    src_rules = get_sourcecode_rules(ecosystem)
+    result.update(r.id for r in src_rules)
+    # Get metadata detectors (shortcut avoids double call)
+    mdet = get_metadata_detectors(ecosystem)
+    result.update(mdet.keys())
+    return result
 
 
 def _get_rule_param(

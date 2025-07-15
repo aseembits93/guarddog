@@ -51,12 +51,21 @@ def get_sourcecode_rules(
         ecosystem: The ecosystem to filter for if rules are ecosystem specific
         kind: The kind of rule to filter for
     """
-    for rule in SOURCECODE_RULES:
-        if kind and not isinstance(rule, kind):
-            continue
-        if not (getattr(rule, "ecosystem", ecosystem) == ecosystem):
-            continue
-        yield rule
+    # Pull commonly used objects/methods out of loop for speed.
+    rules = SOURCECODE_RULES
+    # Use local variable for fast local lookup
+    if kind is not None:
+        # Merge kind/isinstance and ecosystem attr check in one if.
+        for rule in rules:
+            if isinstance(rule, kind):
+                rule_ecosystem = getattr(rule, "ecosystem", ecosystem)
+                if rule_ecosystem == ecosystem:
+                    yield rule
+    else:
+        for rule in rules:
+            rule_ecosystem = getattr(rule, "ecosystem", ecosystem)
+            if rule_ecosystem == ecosystem:
+                yield rule
 
 
 SOURCECODE_RULES: list[SourceCodeRule] = list()
