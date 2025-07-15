@@ -14,6 +14,10 @@ import pygit2  # type: ignore
 import urllib3.util
 
 from guarddog.analyzer.metadata.repository_integrity_mismatch import IntegrityMismatch
+""" Empty Information Detector
+
+Detects if a package contains an empty description
+"""
 
 GH_REPO_REGEX = r'(?:https?://)?(?:www\.)?github\.com/(?:[\w-]+/)(?:[\w-]+)'
 GH_REPO_OWNER_REGEX = r'(?:https?://)?(?:www\.)?github\.com/([\w-]+)/([\w-]+)'
@@ -199,14 +203,16 @@ def find_suitable_tags_in_list(tags, version):
 
 
 def find_suitable_tags(repo, version):
-    tags_regex = re.compile('^refs/tags/(.*)')
-    tags = []
-    for ref in repo.references:
-        match = tags_regex.match(ref)
-        if match is not None:
-            tags.append(match.group(0))
+    # String prefix and suffix we are looking for
+    prefix = 'refs/tags/'
+    prefix_len = len(prefix)
 
-    return find_suitable_tags_in_list(tags, version)
+    # Use a single list comprehension over repo.references,
+    # filtering and extracting tags that match both the prefix and version suffix
+    return [
+        ref for ref in repo.references
+        if ref.startswith(prefix) and ref.endswith(version)
+    ]
 
 
 # Note: we should have the GitHub related logic factored out as we will need it when we check for signed commits
