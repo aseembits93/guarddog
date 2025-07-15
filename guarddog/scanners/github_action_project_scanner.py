@@ -71,33 +71,40 @@ class GitHubActionDependencyScanner(ProjectScanner):
     def parse_requirements(self, raw_requirements: str) -> List[Dependency]:
         actions = self.parse_workflow_3rd_party_actions(raw_requirements)
         dependencies: List[Dependency] = []
+        dep_by_name = {}
+
+        # Pre-index all lines for each action name for fast lookup
+        # Map: action_name -> first occurrence line idx (zero-based)
+        action_line_index = {}
+        req_lines = raw_requirements.splitlines()
+        for ix, line in enumerate(req_lines):
+            if 'uses:' in line or 'uses' in line:
+                # Attempt naive parse: extract action name (before @)
+                parts = line.split('uses', 1)[-1]
+                colon_idx = parts.find(':')
+                if colon_idx != -1:
+                    uses_value = parts[colon_idx+1:].strip().strip("'\"")
+                    at_idx = uses_value.find('@')
+                    if at_idx > 0:
+                        name = uses_value[:at_idx].strip()
+                        # Only record the first appearance for location
+                        if name and name not in action_line_index:
+                            action_line_index[name] = ix
 
         for action in actions:
             name = action["name"]
             version = action["ref"]
-            idx = next(
-                iter(
-                    [
-                        ix
-                        for ix, line in enumerate(raw_requirements.splitlines())
-                        if name in line
-                    ]
-                ),
-                0,
-            )
-            # find the dep with the same name or create a new one
+            # Use precomputed line index, fallback to 0 if not found
+            idx = action_line_index.get(name, 0)
+
             dep_versions = [DependencyVersion(version=version, location=idx + 1)]
 
-            dep = next(
-                filter(
-                    lambda d: d.name == name,
-                    dependencies,
-                ),
-                None,
-            )
-            if not dep:
+            if name not in dep_by_name:
                 dep = Dependency(name=name, versions=set())
                 dependencies.append(dep)
+                dep_by_name[name] = dep
+            else:
+                dep = dep_by_name[name]
 
             dep.versions.update(dep_versions)
 
