@@ -39,17 +39,16 @@ class PypiRequirementsScanner(ProjectScanner):
         sanitized_lines = []
 
         for line in requirements:
-            is_requirement = re.match(r"\w", line)
-
-            if not is_requirement:
+            # Fast check (no regex): skip if line is empty or does not start with word char
+            if not line or not line[0].isalnum() and line[0] != "_":
                 sanitized_lines.append("")  # empty line to keep the line number
                 continue
 
+            # Only call .replace if needed
             if "\\" in line:
                 line = line.replace("\\", "")
 
-            stripped_line = line.strip()
-            sanitized_lines.append(stripped_line)
+            sanitized_lines.append(line.strip())
 
         return sanitized_lines
 
